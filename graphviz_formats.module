@@ -1,0 +1,29 @@
+<?php
+// $Id$
+
+function graphviz_formats_graphviz_formats() {
+  return array(
+    'svg',
+    'svgz',
+    'fig',
+  );
+}
+
+function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
+  switch ($format) {
+  case 'svg':
+  case 'svgz':
+    $outurl = url($outpath);
+    return <<<EOS
+<object type="image/svg+xml" data="$outurl">
+  <embed type="image/svg+xml" src="$outurl" pluginspage="http://www.adobe.com/svg/viewer/install/" />
+</object>
+EOS;
+  case 'fig':
+    $fig = file_get_contents($outpath);
+    return <<<EOS
+<pre>$fig</pre>
+EOS;
+  }
+}
+

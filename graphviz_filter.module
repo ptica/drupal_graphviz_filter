@@ -1,0 +1,158 @@
+<?php
+// $Id$
+/**
+ * @file Provides new "Graphviz" filter that interprets text as DOT syntax
+ * and outputs corresponding PNG image of the graph.
+ * Uses PEAR::Image_GraphViz (http://pear.php.net/package/Image_GraphViz)
+ */
+
+require_once('Image/GraphViz.php');
+
+function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
+  if ($op == 'list') {
+    return array(
+      0 => t('Graphviz (DOT) syntax'),
+    );
+  }
+
+  if ($op == 'description') {
+    return t('Interprets text as DOT syntax and returns a PNG image of the generated graph.');
+  }
+
+  if ($op == 'process') {
+    return _graphviz_filter_process($text);
+  }
+
+  return $text;
+}
+
+function graphviz_filter_filter_tips($delta, $format, $long = false) {
+  $output = t('Use <a href="@dot">DOT syntax</a> with some additional commands embedded in the comments.', array('@dot' => url('http://www.graphviz.org/Documentation.php')));
+  if ($long) {
+    $output .= t('<p />In the comments, you can specify additional arguments such as:<br />
+                  <ul>
+                  <li>@directed = is it a directed graph? [YES (default)|NO|TRUE|FALSE|1|0]</li>
+                  <li>@command = any graphviz command such as dot, neato, twopi, etc.</li>
+                  <li>@format = any graphviz output format such as png (default), gif, jpg, etc.</li>
+                  <li>@title = the "title" attribute of the HTML element, i.e., the tooltip</li>
+                  <li>@map = does it contain URLs? [YES|NO (default)|TRUE|FALSE|1|0]</li>
+                  </ul>');
+  }
+  return $output;
+}
+
+function _graphviz_filter_process($text) {
+  // Create a temporary file with the DOT script.
+  $outdir = file_directory_path().'/graphviz';
+  file_check_directory($outdir, FILE_CREATE_DIRECTORY);
+  $inpath = System::mktemp();
+  file_put_contents($inpath, $text);
+
+  // Parse arguments and make sure required format is supported.
+  $args = array(
+    'directed' => TRUE,
+    'command' => '',
+    'formats' => 'png',
+    'title' => '',
+    'map' => FALSE,
+  );
+  _graphviz_parse_args($text, $args);
+    
+  // Create and render the graph.
+  $G = new Image_GraphViz($args['directed']);
+  if ($args['command']) {
+    if ($args['directed']) {
+      $G->dotCommand = $args['command'];
+    }
+    else {
+      $G->neatoCommand = $args['command'];
+    }
+  }
+  if ($args['map']) { // FIXME We handle only client-side maps for now.
+    $mappath = file_create_filename(md5($text).'.map', $outdir);
+    if ($G->renderDotFile($inpath, $mappath, 'cmapx')) {
+      $args['mapfile'] = $mappath;
+    }
+  }
+
+  // Render desired formats.
+  $formats = array();
+  foreach (module_implements('graphviz_formats') as $module) {
+    $f = module_invoke($module, 'graphviz_formats');
+    $formats = array_merge($formats, array_fill_keys($f, $module));
+  }
+  $output = '';
+  foreach (explode(',', $args['formats']) as $format) {
+    $format = trim($format);
+    if (!array_key_exists($format, $formats)) {
+      $msg = t('Graphviz format %format is not supported. Please choose one of (%supported).', 
+               array('%format' => $format, '%supported' => implode(', ', array_keys($formats)),
+             ));
+      drupal_set_message($msg, 'error');
+      watchdog('graphviz_filter', $msg, WATCHDOG_ERROR);
+    }
+    $module = $formats[$format];
+    $outpath = file_create_filename(md5($text).'.'.$format, $outdir);
+    if ($G->renderDotFile($inpath, $outpath, $format)) {
+      $output .= module_invoke($module, 'graphviz_render', $inpath, $outpath, $format, $args);
+      $output .= '<p />';
+    }
+    else {
+      $msg = t('There was an error rendering the Graphviz file using format %format.', array('%format' => $format));
+      drupal_set_message($msg, 'error');
+      watchdog('graphviz_filter', $msg, WATCHDOG_ERROR);
+    }
+  }
+  return $output;
+}
+
+function _graphviz_parse_args($text, &$args) {
+  // Parse comments in the DOT syntax to find our arguments.
+  // Taken from a discussion in http://ostermiller.org/findcomment.html
+  if (!preg_match_all("/(?:\/\*(?:[^*]|(?:\*+[^*\/]))*\*+\/)/", $text, $comments)) return;
+  foreach ($comments[0] as $comment) {
+    foreach ($args as $key => $value) {
+      if (($m = _graphviz_parse_arg($comment, $key)) !== FALSE) {
+        if (is_bool($value)) {
+          $args[$key] = preg_match("/TRUE|YES|1/i", $m) == 1;
+        }
+        else {
+          $args[$key] = trim($m);
+        }
+      }
+    }
+  }
+}
+
+function _graphviz_parse_arg($text, $arg) {
+  // FIXME This doesn't handle case /* @arg=value */ i.e. start and close on same line.
+  if (preg_match("/@$arg\s*?=\s*?(\w[\w\W]*?)[\r\n]/i", $text, $match)) {
+    return $match[1];
+  }
+  return FALSE;
+}
+
+function graphviz_filter_graphviz_formats() {
+  return array(
+    'png', 
+    'jpg', 
+    'gif', 
+    'jpeg', 
+    'jpe',
+  );
+}
+
+function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
+  $output = '<div class="graphviz-image"><img src="'.file_create_url($outpath).'" title="'.check_plain($args['title']).'" alt="'.t('graphviz_filter rendering').'" ';
+  if ($args['map'] && $args['mapfile']) {
+    $output .= 'usemap="#G" />';
+    $output .= file_get_contents($args['mapfile']);
+    $output .= "\n";
+  }
+  else {
+    $output .= ' />';
+  }
+  $output .= "</div>\n";
+  return $output;
+}
+
