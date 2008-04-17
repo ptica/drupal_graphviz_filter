@@ -145,7 +145,13 @@ function graphviz_filter_graphviz_formats() {
 function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
   $output = '<div class="graphviz-image"><img src="'.file_create_url($outpath).'" title="'.check_plain($args['title']).'" alt="'.t('graphviz_filter rendering').'" ';
   if ($args['map'] && $args['mapfile']) {
-    $output .= 'usemap="#G" />';
+    $map = file_get_contents($args['mapfile']);
+    $id = 'G';
+    $match = array();
+    if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
+      $id = $match[1];
+    }
+    $output .= 'usemap="#'.$id.'" />';
     $output .= file_get_contents($args['mapfile']);
     $output .= "\n";
   }
