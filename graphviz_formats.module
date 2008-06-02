@@ -13,16 +13,40 @@ function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
   switch ($format) {
   case 'svg':
   case 'svgz':
-    $outurl = url($outpath);
-    return <<<EOS
+    $outurl = url($outpath, NULL, NULL, TRUE);
+    $modurl = url(drupal_get_path('module', 'graphviz_formats'), NULL, NULL, TRUE);
+    if ($args['applet']) {
+      return <<<EOS
+
+<applet code="net.claribole.zgrviewer.ZGRApplet.class" archive="$modurl/zvtm.jar,$modurl/zgrviewer.jar" width="720" height="480">  
+  <param name="type" value="application/x-java-applet;version=1.4" />  
+  <param name="scriptable" value="false" />  
+  <param name="width" value="720" />  
+  <param name="height" value="480" />  
+  <param name="svgURL" value="$outurl" />  
+  <param name="title" value="ZGRViewer - Applet" />  
+  <param name="appletBackgroundColor" value="#DDD" />  
+  <param name="graphBackgroundColor" value="#DDD" />  
+  <param name="highlightColor" value="red" />  
+</applet>
+
+EOS;
+    }
+    else {
+      return <<<EOS
+
 <object type="image/svg+xml" data="$outurl">
   <embed type="image/svg+xml" src="$outurl" pluginspage="http://www.adobe.com/svg/viewer/install/" />
 </object>
+
 EOS;
+    }
   case 'fig':
     $fig = file_get_contents($outpath);
     return <<<EOS
+
 <pre>$fig</pre>
+
 EOS;
   }
 }

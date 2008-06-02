@@ -6,24 +6,18 @@
  * Uses PEAR::Image_GraphViz (http://pear.php.net/package/Image_GraphViz)
  */
 
-require_once('Image/GraphViz.php');
-
 function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
-  if ($op == 'list') {
-    return array(
-      0 => t('Graphviz (DOT) syntax'),
-    );
-  }
-
-  if ($op == 'description') {
+  switch ($op) {
+  case 'list':
+    return array(0 => t('Graphviz (DOT) syntax'));
+  case 'description':
     return t('Interprets text as DOT syntax and returns a PNG image of the generated graph.');
+  case 'process':
+    $regex = "/\[graphviz\](.*?)\[\/graphviz\]/si";
+    return preg_replace_callback($regex, "_graphviz_filter_process", $text);
+  default:
+    return $text;
   }
-
-  if ($op == 'process') {
-    return _graphviz_filter_process($text);
-  }
-
-  return $text;
 }
 
 function graphviz_filter_filter_tips($delta, $format, $long = false) {
@@ -41,7 +35,10 @@ function graphviz_filter_filter_tips($delta, $format, $long = false) {
   return $output;
 }
 
-function _graphviz_filter_process($text) {
+function _graphviz_filter_process($matches) {
+  require_once('Image/GraphViz.php');
+  $text = $matches[1];
+  
   // Create a temporary file with the DOT script.
   $outdir = file_directory_path().'/graphviz';
   file_check_directory($outdir, FILE_CREATE_DIRECTORY);
@@ -55,6 +52,7 @@ function _graphviz_filter_process($text) {
     'formats' => 'png',
     'title' => '',
     'map' => FALSE,
+    'applet' => FALSE,
   );
   _graphviz_parse_args($text, $args);
     
@@ -90,6 +88,7 @@ function _graphviz_filter_process($text) {
              ));
       drupal_set_message($msg, 'error');
       watchdog('graphviz_filter', $msg, WATCHDOG_ERROR);
+      continue;
     }
     $module = $formats[$format];
     $outpath = file_create_filename(md5($text).'.'.$format, $outdir);
