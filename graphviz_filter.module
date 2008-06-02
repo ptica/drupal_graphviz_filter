@@ -35,6 +35,16 @@ function graphviz_filter_filter_tips($delta, $format, $long = false) {
   return $output;
 }
 
+function graphviz_filter_file_download($file) {
+  $file = file_create_path($file);
+  if (strpos($file, file_directory_path().'/graphviz') !== FALSE) {
+    return array(
+      'Content-Length: '.filesize($file),
+    );
+  }
+  return -1;
+}
+
 function _graphviz_filter_process($matches) {
   require_once('Image/GraphViz.php');
   $text = $matches[1];
