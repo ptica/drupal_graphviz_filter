@@ -6,6 +6,8 @@
  * Uses PEAR::Image_GraphViz (http://pear.php.net/package/Image_GraphViz)
  */
 
+define("GRAPHVIZ_REGEX", "/\[graphviz\](.*?)\[\/graphviz\]/si");
+
 function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   switch ($op) {
   case 'list':
@@ -13,8 +15,7 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   case 'description':
     return t('Interprets text as DOT syntax and returns a PNG image of the generated graph.');
   case 'process':
-    $regex = "/\[graphviz\](.*?)\[\/graphviz\]/si";
-    return preg_replace_callback($regex, "_graphviz_filter_process", $text);
+    return preg_replace_callback(GRAPHVIZ_REGEX, "_graphviz_filter_process", $text);
   default:
     return $text;
   }
@@ -23,20 +24,25 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
 function graphviz_filter_filter_tips($delta, $format, $long = false) {
   $output = t('Use <a href="@dot">DOT syntax</a> with some additional commands embedded in the comments.', array('@dot' => url('http://www.graphviz.org/Documentation.php')));
   if ($long) {
-    $output .= t('<p />In the comments, you can specify additional arguments such as:<br />
+    $output .= t('<p />In the comments, you can specify additional arguments such as:
                   <ul>
                   <li>@directed = is it a directed graph? [YES (default)|NO|TRUE|FALSE|1|0]</li>
-                  <li>@command = any graphviz command such as dot, neato, twopi, etc.</li>
-                  <li>@format = any graphviz output format such as png (default), gif, jpg, etc.</li>
+                  <li>@command = Graphviz command used to render the graph such as dot (default), neato, twopi, etc.</li>
+                  <li>@formats = comma-separated output formats desired for this graph such as png (default), gif, jpg, etc.</li>
                   <li>@title = the "title" attribute of the HTML element, i.e., the tooltip</li>
-                  <li>@map = does it contain URLs? [YES|NO (default)|TRUE|FALSE|1|0]</li>
-                  </ul>');
+                  <li>@imagemap = (for image formats) should the image contain an imagemap for node URLs? [YES|NO (default)|TRUE|FALSE|1|0]</li>
+                  <li>@zgrviewer = (for SVG format) should the SVG be displayed using the <a href="http://zvtm.sourceforge.net/zgrviewer.html">ZGRViewer Java applet</a>? [YES|NO (default)|TRUE|FALSE|1|0]</li>
+                  </ul><p />Available format handlers:<ul>');
+    foreach(module_invoke_all('graphviz_formats') as $format) {
+      $output .= '<li>'.$format.'</li>';
+    }
+    $output .= '</ul>';
   }
   return $output;
 }
 
 function graphviz_filter_file_download($file) {
-  $file = file_create_path($file);
+  $file = file_crieate_path($file);
   if (strpos($file, file_directory_path().'/graphviz') !== FALSE) {
     return array(
       'Content-Length: '.filesize($file),
@@ -46,8 +52,11 @@ function graphviz_filter_file_download($file) {
 }
 
 function _graphviz_filter_process($matches) {
+  return graphviz_filter_process($matches[1]);
+}
+
+function graphviz_filter_process($text) {
   require_once('Image/GraphViz.php');
-  $text = $matches[1];
   
   // Create a temporary file with the DOT script.
   $outdir = file_directory_path().'/graphviz';
@@ -61,8 +70,8 @@ function _graphviz_filter_process($matches) {
     'command' => '',
     'formats' => 'png',
     'title' => '',
-    'map' => FALSE,
-    'applet' => FALSE,
+    'imagemap' => FALSE,
+    'zgrviewer' => FALSE,
   );
   _graphviz_parse_args($text, $args);
     
@@ -76,10 +85,10 @@ function _graphviz_filter_process($matches) {
       $G->neatoCommand = $args['command'];
     }
   }
-  if ($args['map']) { // FIXME We handle only client-side maps for now.
-    $mappath = file_create_filename(md5($text).'.map', $outdir);
-    if ($G->renderDotFile($inpath, $mappath, 'cmapx')) {
-      $args['mapfile'] = $mappath;
+  if ($args['imagemap']) { // FIXME We handle only client-side maps for now.
+    $mappath = file_create_path($outdir.'/'.md5($text).'.map');
+    if (file_exists($mappath) || $G->renderDotFile($inpath, $mappath, 'cmapx')) {
+      $args['imagemap.file'] = $mappath;
     }
   }
 
@@ -101,8 +110,8 @@ function _graphviz_filter_process($matches) {
       continue;
     }
     $module = $formats[$format];
-    $outpath = file_create_filename(md5($text).'.'.$format, $outdir);
-    if ($G->renderDotFile($inpath, $outpath, $format)) {
+    $outpath = file_create_path($outdir.'/'.md5($text).'.'.$format);
+    if (file_exists($outpath) || $G->renderDotFile($inpath, $outpath, $format)) {
       $output .= module_invoke($module, 'graphviz_render', $inpath, $outpath, $format, $args);
       $output .= '<p />';
     }
@@ -153,15 +162,15 @@ function graphviz_filter_graphviz_formats() {
 
 function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
   $output = '<div class="graphviz-image"><img src="'.file_create_url($outpath).'" title="'.check_plain($args['title']).'" alt="'.t('graphviz_filter rendering').'" ';
-  if ($args['map'] && $args['mapfile']) {
-    $map = file_get_contents($args['mapfile']);
+  if ($args['imagemap'] && $args['imagemap.file']) {
+    $map = file_get_contents($args['imagemap.file']);
     $id = 'G';
     $match = array();
     if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
       $id = $match[1];
     }
     $output .= 'usemap="#'.$id.'" />';
-    $output .= file_get_contents($args['mapfile']);
+    $output .= file_get_contents($args['imagemap.file']);
     $output .= "\n";
   }
   else {

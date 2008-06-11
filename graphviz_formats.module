@@ -15,7 +15,7 @@ function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
   case 'svgz':
     $outurl = url($outpath, NULL, NULL, TRUE);
     $modurl = url(drupal_get_path('module', 'graphviz_formats'), NULL, NULL, TRUE);
-    if ($args['applet']) {
+    if ($args['zgrviewer']) {
       return <<<EOS
 
 <applet code="net.claribole.zgrviewer.ZGRApplet.class" archive="$modurl/zvtm.jar,$modurl/zgrviewer.jar" width="720" height="480">  
