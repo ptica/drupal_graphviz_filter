@@ -42,7 +42,7 @@ function graphviz_filter_filter_tips($delta, $format, $long = false) {
 }
 
 function graphviz_filter_file_download($file) {
-  $file = file_crieate_path($file);
+  $file = file_create_path($file);
   if (strpos($file, file_directory_path().'/graphviz') !== FALSE) {
     return array(
       'Content-Length: '.filesize($file),

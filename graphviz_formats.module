@@ -24,10 +24,11 @@ function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
   <param name="width" value="720" />  
   <param name="height" value="480" />  
   <param name="svgURL" value="$outurl" />  
-  <param name="title" value="ZGRViewer - Applet" />  
+  <param name="title" value="" />  
   <param name="appletBackgroundColor" value="#DDD" />  
   <param name="graphBackgroundColor" value="#DDD" />  
-  <param name="highlightColor" value="red" />  
+  <param name="highlightColor" value="red" />
+  <param name="displayOverview" value="true" />
 </applet>
 
 EOS;
