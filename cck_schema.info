@@ -1,5 +1,5 @@
 ; $Id$
 name = CCK Schema
-description = Produces a Graphviz diagram of the content types.
+description = Produces a pseudo-UML class diagram of the content types using Graphviz.
 dependencies = content graphviz_filter
 package = CCK

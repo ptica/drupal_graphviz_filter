@@ -59,7 +59,6 @@ function cck_schema_render() {
       if ($field['type'] == 'nodereference') {
         foreach (array_filter($field['referenceable_types']) as $ref) {
           $G->addEdge(array($type['type'] => $ref), array(
-            'arrowhead' => 'none',
             'headlabel' => _cck_schema_nodereference_cardinality($field),
             'taillabel' => '0..*',
           ));
@@ -67,13 +66,13 @@ function cck_schema_render() {
       }
       if ($field['type'] == 'userreference') {
         $G->addEdge(array($type['type'] => 'users'), array(
-          'arrowhead' => 'none',
           'headlabel' => _cck_schema_nodereference_cardinality($field),
           'taillabel' => '0..*',
         ));
       }
       foreach (taxonomy_get_vocabularies($type['type']) as $vid => $vocabulary) {
         $G->addEdge(array($type['type'] => $vid), array(
+          'style' => 'dotted',
         ));
       }
     }
@@ -87,9 +86,12 @@ function cck_schema_render() {
     'shape' => 'record',
     'label' => 'User',
   ));
+
+  _cck_schema_relativity($G);
+
   $dot = <<<EOS
 /*
- * @formats = svg
+ * @formats = png
  * @zgrviewer = TRUE
  */
 EOS;
@@ -113,6 +115,35 @@ function _cck_schema_nodereference_cardinality($field) {
     else {
       return '0..1';
     }
+  }
+}
+
+function _cck_schema_relativity(&$G) {
+  if (!module_exists('relativity')) return;
+  foreach (variable_get('relativity_allow_types', array()) as $type) {
+    foreach (variable_get("relativity_type_$type", array()) as $child) {
+      if ($child == 'default') continue;
+      $G->addEdge(array($type => $child), array(
+        'headlabel' => _cck_schema_relativity_cardinality($child),
+        'taillabel' => '0..*',
+        'style' => 'dashed',
+      ));
+    }
+  }
+}
+
+function _cck_schema_relativity_cardinality($child) {
+  switch (variable_get("relativity_parent_ord_$child", '')) {
+  case 'any':
+    return '0..*';
+  case 'one':
+    return '1';
+  case 'none':
+    return '0';
+  case 'one or more':
+    return '1..*';
+  default:
+    return '?';
   }
 }
 
