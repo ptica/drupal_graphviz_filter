@@ -11,15 +11,8 @@ function cck_schema_menu($may_cache) {
       'path' => 'admin/content/types/schema',
       'title' => t('Schema'),
       'type' => MENU_LOCAL_TASK,
-      'callback' => 'cck_schema_redirect',
-      'weight' => 10,
-      'access' => TRUE,
-    );
-    $items[] = array(
-      'path' => 'schema',
-      'title' => t('CCK Schema'),
-      'type' => MENU_CALLBACK,
       'callback' => 'cck_schema_render',
+      'weight' => 10,
       'access' => TRUE,
     );
   } else {
@@ -92,7 +85,7 @@ function cck_schema_render() {
   $dot = <<<EOS
 /*
  * @formats = png
- * @zgrviewer = TRUE
+ * @imagemap = TRUE
  */
 EOS;
   $dot .= $G->fetch('dot');
@@ -124,8 +117,8 @@ function _cck_schema_relativity(&$G) {
     foreach (variable_get("relativity_type_$type", array()) as $child) {
       if ($child == 'default') continue;
       $G->addEdge(array($type => $child), array(
-        'headlabel' => _cck_schema_relativity_cardinality($child),
-        'taillabel' => '0..*',
+        'taillabel' => _cck_schema_relativity_cardinality($child),
+        'headlabel' => '0..*',
         'style' => 'dashed',
       ));
     }
