@@ -13,21 +13,12 @@ function cck_schema_menu($may_cache) {
       'type' => MENU_LOCAL_TASK,
       'callback' => 'cck_schema_render',
       'weight' => 10,
-      'access' => TRUE,
+      'access' => user_access('administer content types'),
     );
   } else {
   }
 
   return $items;
-}
-
-function cck_schema_redirect() {
-  // FIXME: This redirection is due to a weird bug in the behaviour of the applet 
-  // in the presence of Clean URLs *AND* the page's URL being located in an
-  // existing admin section (e.g. admin/content/*). The symptom is that the applet
-  // is unable to load the given SVG file. When this gets fixed, just change the menus
-  // above such that admin/content/types/schema calls cck_schema_render() directly.
-  drupal_goto('schema');
 }
 
 function cck_schema_render() {
@@ -63,11 +54,11 @@ function cck_schema_render() {
           'taillabel' => '0..*',
         ));
       }
-      foreach (taxonomy_get_vocabularies($type['type']) as $vid => $vocabulary) {
-        $G->addEdge(array($type['type'] => $vid), array(
-          'style' => 'dotted',
-        ));
-      }
+    }
+    foreach (taxonomy_get_vocabularies($type['type']) as $vid => $vocabulary) {
+      $G->addEdge(array($type['type'] => $vid), array(
+        'style' => 'dotted',
+      ));
     }
     $G->addNode($type['type'], array(
       'shape' => 'record',
@@ -86,6 +77,7 @@ function cck_schema_render() {
 /*
  * @formats = png
  * @imagemap = TRUE
+ * @command = twopi
  */
 EOS;
   $dot .= $G->fetch('dot');
