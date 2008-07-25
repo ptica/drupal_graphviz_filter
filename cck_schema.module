@@ -3,21 +3,14 @@
 
 require_once('Image/GraphViz.php');
 
-function cck_schema_menu($may_cache) {
-  $items = array();
-
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/content/types/schema',
-      'title' => t('Schema'),
-      'type' => MENU_LOCAL_TASK,
-      'callback' => 'cck_schema_render',
-      'weight' => 10,
-      'access' => user_access('administer content types'),
-    );
-  } else {
-  }
-
+function cck_schema_menu() {
+  $items['admin/content/types/schema'] = array(
+    'title' => t('Schema'),
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'cck_schema_render',
+    'access arguments' => array('administer content types'),
+    'weight' => 10,
+  );
   return $items;
 }
 
@@ -63,7 +56,7 @@ function cck_schema_render() {
     $G->addNode($type['type'], array(
       'shape' => 'record',
       'label' => '{'.$type['name'].' ('.$type['type'].')|'.implode('\l', $fields).'\l}',
-      'URL' => url('admin/content/types/'.$type['url_str']),
+      'URL' => url('admin/content/node-type/'.$type['url_str']),
     ));
   }
   $G->addNode('users',array(
@@ -77,7 +70,6 @@ function cck_schema_render() {
 /*
  * @formats = png
  * @imagemap = TRUE
- * @command = twopi
  */
 EOS;
   $dot .= $G->fetch('dot');
