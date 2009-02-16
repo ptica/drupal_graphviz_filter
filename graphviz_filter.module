@@ -87,7 +87,7 @@ function graphviz_filter_process($text) {
   }
   if ($args['imagemap']) { // FIXME We handle only client-side maps for now.
     $mappath = file_create_path($outdir.'/'.md5($text).'.map');
-    if (file_exists($mappath) || $G->renderDotFile($inpath, $mappath, 'cmapx')) {
+    if (file_exists($mappath) || $G->renderDotFile($inpath, getcwd() .'/'. $mappath, 'cmapx')) {
       $args['imagemap.file'] = $mappath;
     }
   }
@@ -111,7 +111,7 @@ function graphviz_filter_process($text) {
     }
     $module = $formats[$format];
     $outpath = file_create_path($outdir.'/'.md5($text).'.'.$format);
-    if (file_exists($outpath) || $G->renderDotFile($inpath, $outpath, $format)) {
+    if (file_exists($outpath) || $G->renderDotFile($inpath, getcwd() .'/'. $outpath, $format)) {
       $output .= module_invoke($module, 'graphviz_render', $inpath, $outpath, $format, $args);
       $output .= '<p />';
     }
