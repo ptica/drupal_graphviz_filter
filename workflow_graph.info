@@ -1,0 +1,7 @@
+; $Id$
+name = Workflow Graph
+description = Produces workflow graphs using Graphviz.
+package = Workflow
+dependencies[] = workflow 
+dependencies[] = graphviz_filter
+core = 6.x

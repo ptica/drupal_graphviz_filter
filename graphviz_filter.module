@@ -2,18 +2,41 @@
 // $Id$
 /**
  * @file Provides new "Graphviz" filter that interprets text as DOT syntax
- * and outputs corresponding PNG image of the graph.
- * Uses PEAR::Image_GraphViz (http://pear.php.net/package/Image_GraphViz)
+ * and outputs corresponding rendering of the graph.
  */
 
 define("GRAPHVIZ_REGEX", "/\[graphviz\](.*?)\[\/graphviz\]/si");
 
+/**
+ * Implementation of hook_requirements()
+ */
+function graphviz_filter_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+
+  if ($phase == 'runtime') {
+    // Check for availability of `dot`.
+    $output = array();
+    $return = 0;
+    exec('dot -V 2>&1', $output, $return);
+    $requirements['dot'] = array(
+      'title' => $t('Graphviz'),
+      'value' => check_plain(implode('<br />', $output)),
+      'severity' => $return != 0 ? REQUIREMENT_ERROR : REQUIREMENT_OK,
+    );
+  }
+  return $requirements;
+}
+
+/**
+ * Implementation of hook_filter()
+ */
 function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   switch ($op) {
   case 'list':
     return array(0 => t('Graphviz (DOT) syntax'));
   case 'description':
-    return t('Interprets text as DOT syntax and returns a PNG image of the generated graph.');
+    return t('Interprets text as DOT syntax and renders the generated graph with the specified format.');
   case 'process':
     return preg_replace_callback(GRAPHVIZ_REGEX, "_graphviz_filter_process", $text);
   default:
@@ -21,26 +44,37 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   }
 }
 
+/**
+ * Implementation of hook_filter_tips()
+ */
 function graphviz_filter_filter_tips($delta, $format, $long = false) {
-  $output = t('Use <a href="@dot">DOT syntax</a> with some additional commands embedded in the comments.', array('@dot' => url('http://www.graphviz.org/Documentation.php')));
+  $output = '';
   if ($long) {
-    $output .= t('<p />In the comments, you can specify additional arguments such as:
-                  <ul>
-                  <li>@directed = is it a directed graph? [YES (default)|NO|TRUE|FALSE|1|0]</li>
-                  <li>@command = Graphviz command used to render the graph such as dot (default), neato, twopi, etc.</li>
-                  <li>@formats = comma-separated output formats desired for this graph such as png (default), gif, jpg, etc.</li>
-                  <li>@title = the "title" attribute of the HTML element, i.e., the tooltip</li>
-                  <li>@imagemap = (for image formats) should the image contain an imagemap for node URLs? [YES|NO (default)|TRUE|FALSE|1|0]</li>
-                  <li>@zgrviewer = (for SVG format) should the SVG be displayed using the <a href="http://zvtm.sourceforge.net/zgrviewer.html">ZGRViewer Java applet</a>? [YES|NO (default)|TRUE|FALSE|1|0]</li>
-                  </ul><p />Available format handlers:<ul>');
-    foreach(module_invoke_all('graphviz_formats') as $format) {
-      $output .= '<li>'.$format.'</li>';
-    }
-    $output .= '</ul>';
+    $output .= t('<h4>Using Graphviz filter</h4>');
   }
+  $output .= t('Use <a href="@dot">DOT syntax</a> with some additional commands embedded in the comments.', array('@dot' => url('http://www.graphviz.org/Documentation.php')));
+  $output .= '&nbsp;';
+  list($formats, $args) = _graphviz_filter_formats();
+  if ($long) {
+    $output .= t('In the comments, you can specify additional arguments such as:');
+    $items = array();
+    foreach ($args as $arg => $info) {
+      $items[] = '@'. $arg .': '. $info['description'];
+    }
+    $output .= theme_item_list($items);
+  }
+  $output .= t('Available formats:');
+  $items = array();
+  foreach ($formats as $format => $info) {
+    $items[] = $format .': '. $info['description'];
+  }
+  $output .= theme_item_list($items);
   return $output;
 }
 
+/**
+ * Implementation of hook_file_download()
+ */
 function graphviz_filter_file_download($file) {
   $file = file_create_path($file);
   if (strpos($file, file_directory_path().'/graphviz') !== FALSE) {
@@ -51,98 +85,130 @@ function graphviz_filter_file_download($file) {
   return -1;
 }
 
-function _graphviz_filter_process($matches) {
-  return graphviz_filter_process($matches[1]);
-}
-
-function graphviz_filter_process($text) {
-  require_once('Image/GraphViz.php');
-  
-  // Create a temporary file with the DOT script.
-  $outdir = file_directory_path().'/graphviz';
-  file_check_directory($outdir, FILE_CREATE_DIRECTORY);
-  $inpath = System::mktemp();
-  file_put_contents($inpath, $text);
-
-  // Parse arguments and make sure required format is supported.
-  $args = array(
-    'directed' => TRUE,
-    'command' => '',
-    'formats' => 'png',
-    'title' => '',
-    'imagemap' => FALSE,
-    'zgrviewer' => FALSE,
-  );
-  _graphviz_parse_args($text, $args);
-    
-  // Create and render the graph.
-  $G = new Image_GraphViz($args['directed']);
-  if ($args['command']) {
-    if ($args['directed']) {
-      $G->dotCommand = $args['command'];
-    }
-    else {
-      $G->neatoCommand = $args['command'];
-    }
-  }
-  if ($args['imagemap']) { // FIXME We handle only client-side maps for now.
-    $mappath = file_create_path($outdir.'/'.md5($text).'.map');
-    if (file_exists($mappath) || $G->renderDotFile($inpath, getcwd() .'/'. $mappath, 'cmapx')) {
-      $args['imagemap.file'] = $mappath;
-    }
-  }
-
-  // Render desired formats.
-  $formats = array();
-  foreach (module_implements('graphviz_formats') as $module) {
-    $f = module_invoke($module, 'graphviz_formats');
-    $formats = array_merge($formats, array_fill_keys($f, $module));
-  }
-  $output = '';
-  foreach (explode(',', $args['formats']) as $format) {
-    $format = trim($format);
-    if (!array_key_exists($format, $formats)) {
-      $msg = t('Graphviz format %format is not supported. Please choose one of (%supported).', 
-               array('%format' => $format, '%supported' => implode(', ', array_keys($formats)),
-             ));
-      drupal_set_message($msg, 'error');
-      watchdog('graphviz_filter', $msg, WATCHDOG_ERROR);
-      continue;
-    }
-    $module = $formats[$format];
-    $outpath = file_create_path($outdir.'/'.md5($text).'.'.$format);
-    if (file_exists($outpath) || $G->renderDotFile($inpath, getcwd() .'/'. $outpath, $format)) {
-      $output .= module_invoke($module, 'graphviz_render', $inpath, $outpath, $format, $args);
-      $output .= '<p />';
-    }
-    else {
-      $msg = t('There was an error rendering the Graphviz file using format %format.', array('%format' => $format));
-      drupal_set_message($msg, 'error');
-      watchdog('graphviz_filter', $msg, WATCHDOG_ERROR);
-    }
-  }
-  return $output;
-}
-
-function _graphviz_parse_args($text, &$args) {
-  // Parse comments in the DOT syntax to find our arguments.
-  // Taken from a discussion in http://ostermiller.org/findcomment.html
-  if (!preg_match_all("/(?:\/\*(?:[^*]|(?:\*+[^*\/]))*\*+\/)/", $text, $comments)) return;
-  foreach ($comments[0] as $comment) {
-    foreach ($args as $key => $value) {
-      if (($m = _graphviz_parse_arg($comment, $key)) !== FALSE) {
-        if (is_bool($value)) {
-          $args[$key] = preg_match("/TRUE|YES|1/i", $m) == 1;
-        }
-        else {
-          $args[$key] = trim($m);
+/**
+ * Implementation of hook_nodeapi()
+ */
+function graphviz_filter_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($op == 'delete') { // delete the Graphviz rendering if any
+    $matches = array();
+    if (preg_match_all(GRAPHVIZ_REGEX, $node->body, $matches)) {
+      $dir = file_directory_path().'/graphviz';
+      foreach ($matches[1] as $match) {
+        $match = str_replace(array("\r\n", "\r"), "\n", $match); // do like filter.module
+        $basename = md5($match);
+        foreach (file_scan_directory($dir, $basename) as $file) {
+          file_delete($file->filename);
         }
       }
     }
   }
 }
 
-function _graphviz_parse_arg($text, $arg) {
+function _graphviz_filter_process($matches) {
+  return graphviz_filter_process($matches[1]);
+}
+
+function graphviz_filter_process($text) {
+  // Create a temporary file with the DOT script.
+  $outdir = file_directory_path().'/graphviz';
+  file_check_directory($outdir, FILE_CREATE_DIRECTORY);
+  $inpath = file_create_path($outdir .'/'. md5($text) .'.dot');
+  file_put_contents($inpath, $text);
+
+  // Parse arguments.
+  list($formats, $args) = _graphviz_filter_formats();
+  _graphviz_filter_parse_args($text, $args);
+
+  // Render desired formats.
+  $output = '';
+  foreach (explode(',', $args['formats']['value']) as $format) {
+    $format = trim($format);
+    if (!array_key_exists($format, $formats)) {
+      $msg = 'Graphviz format %format is not supported. Please choose one of (%supported).';
+      $arg = array('%format' => $format, '%supported' => implode(', ', array_keys($formats)));
+      drupal_set_message(t($msg, $arg), 'error');
+      watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
+      continue;
+    }
+    $outpath = file_create_path($outdir .'/'. md5($text) .'.'. $formats[$format]['format']);
+    if (file_exists($outpath) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
+      $output .= module_invoke($formats[$format]['module'], 'graphviz_render', $inpath, $outpath, $formats[$format], $args);
+      $output .= '<p />';
+    }
+  }
+  return $output;
+}
+
+function _graphviz_filter_formats() {
+  // Gather available formats and arguments.
+  $formats = array();
+  $args = array(
+    'command' => array(
+      'description' => t('Process the graph script using this Graphviz command (`dot`, `neato`, `twopi`, etc).'),
+      'value' => 'dot',
+    ),
+    'formats' => array(
+      'description' => t('Comma-separated list of desired output formats.'),
+      'value' => 'png',
+    ),
+    'title' => array(
+      'description' => t('Title of the output image.'),
+      'value' => '',
+    ),
+  );
+  foreach (module_implements('graphviz_formats') as $module) {
+    $f = module_invoke($module, 'graphviz_formats');
+    foreach ($f as $format => $info) {
+      $f[$format]['module'] = $module;
+      if (is_array($f[$format]['arguments'])) {
+        $args += $f[$format]['arguments'];
+      }
+    }
+    $formats += $f;
+  }
+  return array($formats, $args);
+}
+
+function _graphviz_filter_render($dotfile, $outputfile, $format, $command)
+{
+  $command .= ' -T'.escapeshellarg($format)
+             .' -o'.escapeshellarg(getcwd() .'/'. $outputfile)
+             .' '.escapeshellarg(getcwd() .'/'. $dotfile)
+             .' 2>&1';
+  $output = array();
+  $return = 0;
+  exec($command, $output, $return);
+  clearstatcache();
+  if ($return != 0) {
+    $msg = 'Graphviz encountered an error while rendering to format %format:<br/>%output';
+    $arg = array('%format' => $format, '%output' => check_plain(implode('<br />', $output)));
+    drupal_set_message(t($msg, $arg), 'error');
+    watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+function _graphviz_filter_parse_args($text, &$args) {
+  // Parse comments in the DOT syntax to find our arguments.
+  // Taken from a discussion in http://ostermiller.org/findcomment.html
+  if (!preg_match_all("/(?:\/\*(?:[^*]|(?:\*+[^*\/]))*\*+\/)/", $text, $comments)) return;
+  foreach ($comments[0] as $comment) {
+    foreach ($args as $key => $info) {
+      $value = $info['value'];
+      if (($m = _graphviz_filter_parse_arg($comment, $key)) !== FALSE) {
+        if (is_bool($value)) {
+          $args[$key]['value'] = preg_match("/TRUE|YES|ON|1/i", $m) == 1;
+        }
+        else {
+          $args[$key]['value'] = trim($m);
+        }
+      }
+    }
+  }
+}
+
+function _graphviz_filter_parse_arg($text, $arg) {
   // FIXME This doesn't handle case /* @arg=value */ i.e. start and close on same line.
   if (preg_match("/@$arg\s*?=\s*?(\w[\w\W]*?)[\r\n]/i", $text, $match)) {
     return $match[1];
@@ -150,27 +216,41 @@ function _graphviz_parse_arg($text, $arg) {
   return FALSE;
 }
 
+/**
+ * Implementation of hook_graphviz_formats()
+ */ 
 function graphviz_filter_graphviz_formats() {
-  return array(
-    'png', 
-    'jpg', 
-    'gif', 
-    'jpeg', 
-    'jpe',
-  );
+  $formats = array();
+  foreach (array('png', 'jpg', 'gif') as $format) {
+    $formats[$format] = array(
+      'description' => t('Standard HTML &lt;img&gt; rendering for !format.', array('!format' => strtoupper($format))),
+      'format' => $format,
+      'arguments' => array(
+        'imagemap' => array(
+          'description' => t('Create a client-side image map for the output image (TRUE or FALSE).'),
+          'value' => FALSE,
+        ),
+      ),
+    );
+  }
+  return $formats;
 }
 
+/**
+ * Implementation of hook_graphviz_render()
+ */
 function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
-  $output = '<div class="graphviz-image"><img src="'.file_create_url($outpath).'" title="'.check_plain($args['title']).'" alt="'.t('graphviz_filter rendering').'" ';
-  if ($args['imagemap'] && $args['imagemap.file']) {
-    $map = file_get_contents($args['imagemap.file']);
+  $output = '<div class="graphviz-image"><img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
+  $mappath = file_create_path($outpath .'.map');
+  if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mappath, 'cmapx', $args['command']['value'])) {
+    $map = file_get_contents($mappath);
     $id = 'G';
     $match = array();
     if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
       $id = $match[1];
     }
     $output .= 'usemap="#'.$id.'" />';
-    $output .= file_get_contents($args['imagemap.file']);
+    $output .= $map;
     $output .= "\n";
   }
   else {

@@ -1,8 +1,6 @@
 <?php
 // $Id$
 
-require_once('Image/GraphViz.php');
-
 function cck_schema_menu() {
   $items['admin/content/types/schema'] = array(
     'title' => t('Schema'),
@@ -15,6 +13,7 @@ function cck_schema_menu() {
 }
 
 function cck_schema_render() {
+  require_once('Image/GraphViz.php');
   $G = new Image_Graphviz(TRUE);
   foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
     $G->addNode($vid, array(
