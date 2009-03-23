@@ -19,7 +19,16 @@ function workflow_graph_menu() {
     'type' => MENU_CALLBACK,
     'page callback' => 'workflow_graph_definition',
   );
-  $items['node/%workflow_graph/graph'] = array(
+  $items['node/%node/workflow'] = array(
+    'title' => 'Workflow',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'access callback' => 'workflow_node_tab_access',
+    'access arguments' => array(1),
+    'page callback' => 'workflow_tab_page',
+    'page arguments' => array(1),
+    'weight' => 2,
+  );
+  $items['node/%workflow_graph/workflow/graph'] = array(
     'title' => 'History',
     'access callback' => 'workflow_node_tab_access',
     'access arguments' => array(1),
