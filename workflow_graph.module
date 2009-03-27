@@ -19,7 +19,7 @@ function workflow_graph_menu() {
     'type' => MENU_CALLBACK,
     'page callback' => 'workflow_graph_definition',
   );
-  $items['node/%node/workflow'] = array(
+  $items['node/%node/workflow/workflow'] = array(
     'title' => 'Workflow',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'access callback' => 'workflow_node_tab_access',
