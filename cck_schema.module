@@ -13,7 +13,7 @@ function cck_schema_menu() {
 }
 
 function cck_schema_render() {
-  require_once('Image/GraphViz.php');
+  require_once(_graphviz_create_filepath(variable_get('graphviz_filter_pear_path', ''), 'Image/GraphViz.php'));
   $G = new Image_Graphviz(TRUE);
   foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
     $G->addNode($vid, array(

@@ -84,7 +84,7 @@ function workflow_graph_history($node) {
 }
 
 function theme_workflow_graph_history($node) {
-  require_once('Image/GraphViz.php');
+  require_once(_graphviz_create_filepath(variable_get('graphviz_filter_pear_path', ''), 'Image/GraphViz.php'));
 
   drupal_set_title(check_plain($node->title));
   $G = _workflow_graph_history_generate($node);

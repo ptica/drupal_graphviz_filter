@@ -18,11 +18,23 @@ function graphviz_filter_requirements($phase) {
     // Check for availability of `dot`.
     $output = array();
     $return = 0;
-    exec('dot -V 2>&1', $output, $return);
+    $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), 'dot'); 
+    exec("$command -V 2>&1", $output, $return);
     $requirements['dot'] = array(
-      'title' => $t('Graphviz'),
+      'title' => $t('Graphviz tools'),
       'value' => check_plain(implode('<br />', $output)),
       'severity' => $return != 0 ? REQUIREMENT_ERROR : REQUIREMENT_OK,
+    );
+
+    // Check for availability of PEAR::Image_GraphViz.
+    $pear = file_exists(_graphviz_create_filepath(variable_get('graphviz_filter_pear_path', ''), 'Image/GraphViz.php'));
+    $requirements['pear'] = array(
+      'title' => $t('Graphviz PEAR package'),
+      'value' => $pear ? $t('The PEAR::Image_GraphViz package was found.') : 
+                         $t('The PEAR::Image_GraphViz package was not found. 
+                             Graphviz Filter will still function normally, but some sub-modules (such as CCK Schema and Workflow Graph) will not. 
+                             Please install the package and/or make sure that the Graphviz Filter settings are set to locate it properly.'),
+      'severity' => $pear ? REQUIREMENT_OK : REQUIREMENT_ERROR,
     );
   }
   return $requirements;
@@ -39,6 +51,8 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
     return t('Interprets text as DOT syntax and renders the generated graph with the specified format.');
   case 'process':
     return preg_replace_callback(GRAPHVIZ_REGEX, "_graphviz_filter_process", $text);
+  case 'settings':
+    return _graphviz_filter_settings();
   default:
     return $text;
   }
@@ -102,6 +116,43 @@ function graphviz_filter_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
       }
     }
   }
+}
+
+function _graphviz_filter_settings() {
+  $form = array();
+  $form['graphviz_filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Graphviz Filter',
+  );
+  $form['graphviz_filter']['graphviz_filter_dot_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path of Graphviz tools'),
+    '#default_value' => variable_get('graphviz_filter_dot_path', ''),
+    '#description' => t('Specify the base path of the Graphviz tools (`dot`, `neato`, etc). 
+                         Leave blank if these tools are to be found on the system PATH which, on this server, is set to:<br /><pre>@path</pre>',
+                         array('@path' => $_ENV['PATH'])
+                       ),
+  );
+  $form['graphviz_filter']['graphviz_filter_pear_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path of PEAR::Image_GraphViz package'),
+    '#default_value' => variable_get('graphviz_filter_pear_path', ''),
+    '#description' => t('Specify the base path of the PEAR::Image_GraphViz package. 
+                         The specified directory should contain the following subdirectory structure: Image/GraphViz.php. 
+                         Leave blank if this package was installed via `pear install` or if it is present in the PHP include_path setting.
+                         Note that this setting is only needed for sub-modules CCK Schema and Workflow Graph, rather than the core Graphviz Filter module.
+                         On this server, the PHP include_path is set to:<br/><pre>@path</pre>',
+                         array('@path' => ini_get('include_path'))
+                       ),
+  );
+  return $form;
+}
+
+function _graphviz_create_filepath($path, $filename) {
+  if (!empty($path)) {
+    return rtrim($path, '/') .'/'. $filename;
+  }
+  return $filename;
 }
 
 function _graphviz_filter_process($matches) {
@@ -171,6 +222,7 @@ function _graphviz_filter_formats() {
 
 function _graphviz_filter_render($dotfile, $outputfile, $format, $command)
 {
+  $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), $command);  
   $command .= ' -T'.escapeshellarg($format)
              .' -o'.escapeshellarg(getcwd() .'/'. $outputfile)
              .' '.escapeshellarg(getcwd() .'/'. $dotfile)
