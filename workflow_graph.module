@@ -92,8 +92,9 @@ function theme_workflow_graph_history($node) {
 /*
  * @formats = png
  */
+
 EOS;
-  $dot .= $G->fetch('dot');
+  $dot .= $G->parse();
   return graphviz_filter_process($dot);
 }
 

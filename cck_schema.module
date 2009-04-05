@@ -70,8 +70,9 @@ function cck_schema_render() {
  * @formats = png
  * @imagemap = TRUE
  */
+
 EOS;
-  $dot .= $G->fetch('dot');
+  $dot .= $G->parse();
   return graphviz_filter_process($dot);
 }
 
