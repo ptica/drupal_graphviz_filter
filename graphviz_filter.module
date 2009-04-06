@@ -27,7 +27,7 @@ function graphviz_filter_requirements($phase) {
     );
 
     // Check for availability of PEAR::Image_GraphViz.
-    $pear = file_exists(_graphviz_create_filepath(variable_get('graphviz_filter_pear_path', ''), 'Image/GraphViz.php'));
+    $pear = (bool)(($handle = @fopen(_graphviz_create_filepath(variable_get('graphviz_filter_pear_path', ''), 'Image/GraphViz.php'), 'r', TRUE)) && fclose($handle));
     $requirements['pear'] = array(
       'title' => $t('Graphviz PEAR package'),
       'value' => $pear ? $t('The PEAR::Image_GraphViz package was found.') : 
