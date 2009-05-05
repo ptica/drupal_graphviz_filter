@@ -96,7 +96,6 @@ function graphviz_filter_file_download($file) {
       'Content-Length: '.filesize($file),
     );
   }
-  return -1;
 }
 
 /**
