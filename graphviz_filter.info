@@ -1,5 +1,5 @@
 ; $Id$ 
 name = Graphviz filter
 description = "Treats input text as DOT syntax and passes it to dot, neato or other, embedding the output into the page."
-package = Input filters
+package = Filters
 core = 6.x
