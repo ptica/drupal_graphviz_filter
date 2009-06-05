@@ -171,19 +171,21 @@ function _workflow_graph_format_transition_label($wid, $tid, $roles_string) {
   }
   $label = implode(',\l', $label).'\l';
 
-  $types = db_query("SELECT type FROM {workflow_type_map} WHERE wid=%d", $wid);
-  while ($type = db_fetch_object($types)) {
-    $op = 'workflow-'. $type->type .'-'. $tid;
-    $aids = _trigger_get_hook_aids('workflow', $op);
-    $actions = array();
-    if (!empty($aids)) {
-      $result = db_query("SELECT description FROM {actions} WHERE aid IN ('". implode('\',\'', array_keys($aids)) ."')");
-      while ($a = db_fetch_object($result) ){
-        $actions[] = $a->description;
+  if (module_exists('trigger')) {
+    $types = db_query("SELECT type FROM {workflow_type_map} WHERE wid=%d", $wid);
+    while ($type = db_fetch_object($types)) {
+      $op = 'workflow-'. $type->type .'-'. $tid;
+      $aids = _trigger_get_hook_aids('workflow', $op);
+      $actions = array();
+      if (!empty($aids)) {
+        $result = db_query("SELECT description FROM {actions} WHERE aid IN ('". implode('\',\'', array_keys($aids)) ."')");
+        while ($a = db_fetch_object($result) ){
+          $actions[] = $a->description;
+        }
       }
-    }
-    if (!empty($actions)) {
-      $label .= $type->type .' { '. implode(';\r', $actions) .' }\r';
+      if (!empty($actions)) {
+        $label .= $type->type .' { '. implode(';\r', $actions) .' }\r';
+      }
     }
   }
   return $label;
