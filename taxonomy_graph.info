@@ -1,0 +1,8 @@
+; $Id$
+name = Taxonomy Graph
+description = Produces a taxonomy graph using Graphviz.
+dependencies[] = taxonomy
+dependencies[] = graphviz_filter
+package = Taxonomy
+core = 6.x
+
