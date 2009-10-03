@@ -1,5 +1,5 @@
 ; $Id$
-name = Graphviz filter formats
+name = Graphviz Filter Formats
 description = "Additional rendering formats for Graphviz Filter."
 dependencies[] = graphviz_filter
 package = Filters

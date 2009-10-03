@@ -8,7 +8,7 @@
 define("GRAPHVIZ_REGEX", "/\[graphviz\](.*?)\[\/graphviz\]/si");
 
 /**
- * Implementation of hook_requirements()
+ * Implementation of hook_requirements().
  */
 function graphviz_filter_requirements($phase) {
   $requirements = array();
@@ -41,7 +41,7 @@ function graphviz_filter_requirements($phase) {
 }
 
 /**
- * Implementation of hook_filter()
+ * Implementation of hook_filter().
  */
 function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   switch ($op) {
@@ -59,7 +59,7 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
 }
 
 /**
- * Implementation of hook_filter_tips()
+ * Implementation of hook_filter_tips().
  */
 function graphviz_filter_filter_tips($delta, $format, $long = false) {
   $output = '';
@@ -87,11 +87,11 @@ function graphviz_filter_filter_tips($delta, $format, $long = false) {
 }
 
 /**
- * Implementation of hook_file_download()
+ * Implementation of hook_file_download().
  */
 function graphviz_filter_file_download($file) {
   $file = file_create_path($file);
-  if (strpos($file, file_directory_path().'/graphviz') !== FALSE) {
+  if (strpos($file, file_directory_path() .'/graphviz') !== FALSE) {
     return array(
       'Content-Length: '.filesize($file),
     );
@@ -99,13 +99,13 @@ function graphviz_filter_file_download($file) {
 }
 
 /**
- * Implementation of hook_nodeapi()
+ * Implementation of hook_nodeapi().
  */
 function graphviz_filter_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
   if ($op == 'delete') { // delete the Graphviz rendering if any
     $matches = array();
     if (preg_match_all(GRAPHVIZ_REGEX, $node->body, $matches)) {
-      $dir = file_directory_path().'/graphviz';
+      $dir = file_directory_path() .'/graphviz';
       foreach ($matches[1] as $match) {
         $match = str_replace(array("\r\n", "\r"), "\n", $match); // do like filter.module
         $basename = md5($match);
@@ -182,8 +182,9 @@ function graphviz_filter_process($text) {
     }
     $outpath = file_create_path($outdir .'/'. md5($text) .'.'. $formats[$format]['format']);
     if (file_exists($outpath) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
+      $output .= '<div class="graphviz graphviz-"'. $formats[$format]['format'] .'>';
       $output .= module_invoke($formats[$format]['module'], 'graphviz_render', $inpath, $outpath, $formats[$format], $args);
-      $output .= '<p />';
+      $output .= '</div>';
     }
   }
   return $output;
@@ -219,8 +220,7 @@ function _graphviz_filter_formats() {
   return array($formats, $args);
 }
 
-function _graphviz_filter_render($dotfile, $outputfile, $format, $command)
-{
+function _graphviz_filter_render($dotfile, $outputfile, $format, $command) {
   $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), $command);  
   $command .= ' -T'.escapeshellarg($format)
              .' -o'.escapeshellarg(getcwd() .'/'. $outputfile)
@@ -231,7 +231,7 @@ function _graphviz_filter_render($dotfile, $outputfile, $format, $command)
   exec($command, $output, $return);
   clearstatcache();
   if ($return != 0) {
-    $msg = 'Graphviz encountered an error while rendering to format %format:<br/>%output';
+    $msg = 'Graphviz encountered an error while rendering to format %format:<br />%output';
     $arg = array('%format' => $format, '%output' => check_plain(implode('<br />', $output)));
     drupal_set_message(t($msg, $arg), 'error');
     watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
@@ -268,7 +268,7 @@ function _graphviz_filter_parse_arg($text, $arg) {
 }
 
 /**
- * Implementation of hook_graphviz_formats()
+ * Implementation of hook_graphviz_formats().
  */ 
 function graphviz_filter_graphviz_formats() {
   $formats = array();
@@ -288,10 +288,10 @@ function graphviz_filter_graphviz_formats() {
 }
 
 /**
- * Implementation of hook_graphviz_render()
+ * Implementation of hook_graphviz_render().
  */
 function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
-  $output = '<div class="graphviz-image"><img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
+  $output = '<img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
   $mappath = file_create_path($outpath .'.map');
   if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mappath, 'cmapx', $args['command']['value'])) {
     $map = file_get_contents($mappath);
@@ -307,7 +307,22 @@ function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
   else {
     $output .= ' />';
   }
-  $output .= "</div>\n";
+  $output .= "\n";
   return $output;
+}
+
+/**
+ * API function to render an Image_Graphviz graph.
+ */
+function graphviz_filter_render(&$G) {
+  $dot = <<<EOS
+/*
+ * @formats = png
+ * @imagemap = TRUE
+ */
+
+EOS;
+  $dot .= $G->parse();
+  return graphviz_filter_process($dot);
 }
 

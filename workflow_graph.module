@@ -88,14 +88,7 @@ function theme_workflow_graph_history($node) {
 
   drupal_set_title(check_plain($node->title));
   $G = _workflow_graph_history_generate($node);
-  $dot = <<<EOS
-/*
- * @formats = png
- */
-
-EOS;
-  $dot .= $G->parse();
-  return graphviz_filter_process($dot);
+  return graphviz_filter_render($G);
 }
 
 function _workflow_graph_history_generate($node) {

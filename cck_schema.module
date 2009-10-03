@@ -65,15 +65,7 @@ function cck_schema_render() {
 
   _cck_schema_relativity($G);
 
-  $dot = <<<EOS
-/*
- * @formats = png
- * @imagemap = TRUE
- */
-
-EOS;
-  $dot .= $G->parse();
-  return graphviz_filter_process($dot);
+  return graphviz_filter_render($G);
 }
 
 function _cck_schema_nodereference_cardinality($field) {
