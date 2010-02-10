@@ -74,7 +74,7 @@ function taxonomy_graph_page($vocabulary) {
     $tidtree[$term->tid] = $term;
   }
   $G->addNode($vocabulary->name, array('URL' => url('admin/content/taxonomy/edit/vocabulary/' . $vocabulary->vid)));
-  foreach ($tidtree as $term) {
+  if (!empty($tidtree)) foreach ($tidtree as $term) {
     $G->addNode($term->name, array('URL' => url('admin/content/taxonomy/edit/term/' . $term->tid)));
     foreach ($term->parents as $parentid) {
       if ($parentid == 0) $G->addEdge(array($vocabulary->name => $term->name));

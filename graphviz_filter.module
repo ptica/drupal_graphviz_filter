@@ -6,6 +6,7 @@
  */
 
 define("GRAPHVIZ_REGEX", "/\[graphviz\](.*?)\[\/graphviz\]/si");
+define("GRAPHVIZ_FILTER_SUPPORTED_COMMANDS", "dot, neato, twopi, fdp, circo");
 
 /**
  * Implementation of hook_requirements().
@@ -125,12 +126,18 @@ function _graphviz_filter_settings() {
   );
   $form['graphviz_filter']['graphviz_filter_dot_path'] = array(
     '#type' => 'textfield',
-    '#title' => t('Path of Graphviz tools'),
+    '#title' => t('Path of Graphviz commands'),
     '#default_value' => variable_get('graphviz_filter_dot_path', ''),
-    '#description' => t('Specify the base path of the Graphviz tools (`dot`, `neato`, etc). 
-                         Leave blank if these tools are to be found on the system PATH which, on this server, is set to:<br /><pre>@path</pre>',
+    '#description' => t('Specify the base path of the Graphviz commands (`dot`, `neato`, etc). 
+                         Leave blank if these commands are to be found on the system PATH which, on this server, is set to:<br /><pre>@path</pre>',
                          array('@path' => $_ENV['PATH'])
                        ),
+  );
+  $form['graphviz_filter']['graphviz_filter_commands'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Supported Graphviz commands'),
+    '#default_value' => variable_get('graphviz_filter_commands', GRAPHVIZ_FILTER_SUPPORTED_COMMANDS),
+    '#description' => t('Specify the Graphviz commands that can be invoked by the filter, separated by commas. This prevents users from inserting malicious commands in the Graphviz script.'),
   );
   $form['graphviz_filter']['graphviz_filter_pear_path'] = array(
     '#type' => 'textfield',
@@ -159,15 +166,25 @@ function _graphviz_filter_process($matches) {
 }
 
 function graphviz_filter_process($text) {
+  // Parse arguments.
+  list($formats, $args) = _graphviz_filter_formats();
+  _graphviz_filter_parse_args($text, $args);
+
+  // Check for existing command.
+  $supported = array_map('trim', explode(',', variable_get('graphviz_filter_commands', GRAPHVIZ_FILTER_SUPPORTED_COMMANDS)));
+  if (!in_array($args['command']['value'], $supported)) {
+    $msg = 'Graphviz command `%command` is not supported. Please choose one of (%supported) or edit the Graphviz filter settings.';
+    $arg = array('%command' => $args['command']['value'], '%supported' => implode(', ', $supported));
+    drupal_set_message(t($msg, $arg), 'error');
+    watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
+    return $text;
+  }
+
   // Create a temporary file with the DOT script.
   $outdir = file_directory_path().'/graphviz';
   file_check_directory($outdir, FILE_CREATE_DIRECTORY);
   $inpath = file_create_path($outdir .'/'. md5($text) .'.dot');
   file_put_contents($inpath, $text);
-
-  // Parse arguments.
-  list($formats, $args) = _graphviz_filter_formats();
-  _graphviz_filter_parse_args($text, $args);
 
   // Render desired formats.
   $output = '';
