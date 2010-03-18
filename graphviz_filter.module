@@ -54,6 +54,8 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
     return preg_replace_callback(GRAPHVIZ_REGEX, "_graphviz_filter_process", $text);
   case 'settings':
     return _graphviz_filter_settings();
+  case 'no cache':
+    return TRUE;
   default:
     return $text;
   }
@@ -184,7 +186,9 @@ function graphviz_filter_process($text) {
   $outdir = file_directory_path().'/graphviz';
   file_check_directory($outdir, FILE_CREATE_DIRECTORY);
   $inpath = file_create_path($outdir .'/'. md5($text) .'.dot');
-  file_put_contents($inpath, $text);
+  if (!file_exists($inpath)) {
+    file_put_contents($inpath, $text);
+  }
 
   // Render desired formats.
   $output = '';
