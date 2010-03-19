@@ -41,6 +41,24 @@ function graphviz_filter_requirements($phase) {
   return $requirements;
 }
 
+class Functor {
+  function __construct($callback, $args) {
+    $this->callback = $callback;
+    $this->args = $args;
+  }
+  function callback() {
+    $args = array_merge(func_get_args(), $this->args);
+    return call_user_func_array($this->callback, $args);
+  }
+  static function create_functor($callback) {
+    $args = func_get_args();
+    array_shift($args);
+    return array(new Functor($callback, $args), 'callback');
+  }
+  var $callback;
+  var $args;
+};
+
 /**
  * Implementation of hook_filter().
  */
@@ -51,11 +69,11 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   case 'description':
     return t('Interprets text as DOT syntax and renders the generated graph with the specified format.');
   case 'process':
-    return preg_replace_callback(GRAPHVIZ_REGEX, "_graphviz_filter_process", $text);
+    return preg_replace_callback(GRAPHVIZ_REGEX, Functor::create_functor('_graphviz_filter_process', $format), $text);
   case 'settings':
-    return _graphviz_filter_settings();
+    return _graphviz_filter_settings($format);
   case 'no cache':
-    return TRUE;
+    return !variable_get('graphviz_filter_cache', TRUE);
   default:
     return $text;
   }
@@ -120,7 +138,7 @@ function graphviz_filter_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
   }
 }
 
-function _graphviz_filter_settings() {
+function _graphviz_filter_settings($format) {
   $form = array();
   $form['graphviz_filter'] = array(
     '#type' => 'fieldset',
@@ -153,6 +171,13 @@ function _graphviz_filter_settings() {
                          array('@path' => ini_get('include_path'))
                        ),
   );
+  $form['graphviz_filter']['graphviz_filter_cache'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow caching'),
+    '#default_value' => variable_get('graphviz_filter_cache', TRUE),
+    '#description' => t('Check this OFF to regenerate the graph each time, ensuring that accidentally erased files will not cause blank displays. 
+                         The *huge* downside of this is that the fields affected by this input format can no longer be cached, resulting in degraded performance.'),
+  );
   return $form;
 }
 
@@ -163,11 +188,11 @@ function _graphviz_create_filepath($path, $filename) {
   return $filename;
 }
 
-function _graphviz_filter_process($matches) {
-  return graphviz_filter_process($matches[1]);
+function _graphviz_filter_process($matches, $input_format) {
+  return graphviz_filter_process($matches[1], $input_format);
 }
 
-function graphviz_filter_process($text) {
+function graphviz_filter_process($text, $input_format) {
   // Parse arguments.
   list($formats, $args) = _graphviz_filter_formats();
   _graphviz_filter_parse_args($text, $args);
