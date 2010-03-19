@@ -73,7 +73,7 @@ function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
   case 'settings':
     return _graphviz_filter_settings($format);
   case 'no cache':
-    return !variable_get('graphviz_filter_cache', TRUE);
+    return FALSE;
   default:
     return $text;
   }
@@ -171,13 +171,6 @@ function _graphviz_filter_settings($format) {
                          array('@path' => ini_get('include_path'))
                        ),
   );
-  $form['graphviz_filter']['graphviz_filter_cache'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Allow caching'),
-    '#default_value' => variable_get('graphviz_filter_cache', TRUE),
-    '#description' => t('Check this OFF to regenerate the graph each time, ensuring that accidentally erased files will not cause blank displays. 
-                         The *huge* downside of this is that the fields affected by this input format can no longer be cached, resulting in degraded performance.'),
-  );
   return $form;
 }
 
@@ -188,11 +181,11 @@ function _graphviz_create_filepath($path, $filename) {
   return $filename;
 }
 
-function _graphviz_filter_process($matches, $input_format) {
-  return graphviz_filter_process($matches[1], $input_format);
+function _graphviz_filter_process($matches, $format) {
+  return graphviz_filter_process($matches[1]);
 }
 
-function graphviz_filter_process($text, $input_format) {
+function graphviz_filter_process($text) {
   // Parse arguments.
   list($formats, $args) = _graphviz_filter_formats();
   _graphviz_filter_parse_args($text, $args);
