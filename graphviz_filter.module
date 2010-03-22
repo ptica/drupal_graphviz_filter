@@ -219,11 +219,23 @@ function graphviz_filter_process($text) {
       watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
       continue;
     }
-    $outpath = file_create_path($outdir .'/'. md5($text) .'.'. $formats[$format]['format']);
+    $outpath = file_create_path($outdir .'/'. md5($text) .'.out.'. $formats[$format]['format']);
     if (file_exists($outpath) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
-      $output .= '<div class="graphviz graphviz-"'. $formats[$format]['format'] .'>';
-      $output .= module_invoke($formats[$format]['module'], 'graphviz_render', $inpath, $outpath, $formats[$format], $args);
+      $output .= '<div class="graphviz graphviz-"'. $format .'>';
+      if ($args['link-output']['value']) {
+        $output .= l(t($args['title']['value']), file_create_url($outpath), array('attributes' => array('class' => 'graphviz-link-output')));
+      }
+      else {
+        $output .= module_invoke($formats[$format]['module'], 'graphviz_render', $inpath, $outpath, $format, $args);
+      }
       $output .= '</div>';
+      if ($args['link-input']['value']) {
+        $output .= '<div class="graphviz graphviz-"'. $format .'>';
+        $output .= l(t('Download input script for %title', array('%title' => $args['title']['value'])), file_create_url($inpath), 
+          array('html' => TRUE, 'attributes' => array('class' => 'graphviz-link-input'))
+        );
+        $output .= '</div>';
+      }
     }
   }
   return $output;
@@ -245,12 +257,20 @@ function _graphviz_filter_formats() {
       'description' => t('Title of the output image.'),
       'value' => '',
     ),
+    'link-output' => array(
+      'description' => t('Output a link to the output image instead of embedding it (needs @title).'),
+      'value' => FALSE,
+    ),
+    'link-input' => array(
+      'description' => t('Add a link to the input DOT script (needs @title).'),
+      'value' => FALSE,
+    ),
   );
   foreach (module_implements('graphviz_formats') as $module) {
     $f = module_invoke($module, 'graphviz_formats');
     foreach ($f as $format => $info) {
       $f[$format]['module'] = $module;
-      if (is_array($f[$format]['arguments'])) {
+      if (isset($f[$format]['arguments']) && is_array($f[$format]['arguments'])) {
         $args += $f[$format]['arguments'];
       }
     }
@@ -323,6 +343,10 @@ function graphviz_filter_graphviz_formats() {
       ),
     );
   }
+  $formats['dot'] = array(
+    'description' => t('Fully-laid-out DOT rendering of the graph.'),
+    'format' => 'dot',
+  );
   return $formats;
 }
 
@@ -330,23 +354,28 @@ function graphviz_filter_graphviz_formats() {
  * Implementation of hook_graphviz_render().
  */
 function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
-  $output = '<img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
-  $mappath = file_create_path($outpath .'.map');
-  if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mappath, 'cmapx', $args['command']['value'])) {
-    $map = file_get_contents($mappath);
-    $id = 'G';
-    $match = array();
-    if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
-      $id = $match[1];
-    }
-    $output .= 'usemap="#'.$id.'" />';
-    $output .= $map;
-    $output .= "\n";
+  if ($format == 'dot' ) {
+    $output = '<pre>' . file_get_contents($outpath) . '</pre>' . "\n";
   }
   else {
-    $output .= ' />';
+    $output = '<img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
+    $mappath = file_create_path($outpath .'.map');
+    if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mappath, 'cmapx', $args['command']['value'])) {
+      $map = file_get_contents($mappath);
+      $id = 'G';
+      $match = array();
+      if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
+        $id = $match[1];
+      }
+      $output .= 'usemap="#'.$id.'" />';
+      $output .= $map;
+      $output .= "\n";
+    }
+    else {
+      $output .= ' />';
+    }
+    $output .= "\n";
   }
-  $output .= "\n";
   return $output;
 }
 
