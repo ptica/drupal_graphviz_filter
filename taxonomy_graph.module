@@ -91,6 +91,6 @@ function taxonomy_graph_page($vocabulary) {
     }
   }
 
-  return graphviz_filter_render($G, 'taxonomy_graph');
+  return graphviz_filter_render($G, 'taxonomy', array('vocabulary' => $vocabulary));
 }
 

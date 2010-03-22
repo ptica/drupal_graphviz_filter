@@ -100,7 +100,7 @@ function theme_workflow_graph_history($node) {
 
   drupal_set_title(check_plain($node->title));
   $G = _workflow_graph_history_generate($node);
-  return graphviz_filter_render($G, 'workflow_graph_history');
+  return graphviz_filter_render($G, 'workflow_history', array('node' => $node));
 }
 
 function _workflow_graph_history_generate($node) {
@@ -133,7 +133,7 @@ function theme_workflow_graph_definition($wid) {
 
   drupal_set_title(t('Graph workflow %name', array('%name' => workflow_get_name($wid))));
   $G = _workflow_graph_definition_generate($wid);
-  return graphviz_filter_render($G, 'workflow_graph_definition');
+  return graphviz_filter_render($G, 'workflow_definition', array('workflow' => $wid));
 }
 
 function _workflow_graph_definition_generate($wid) {

@@ -68,7 +68,7 @@ function cck_schema_render() {
 
   _cck_schema_relativity($G);
 
-  return graphviz_filter_render($G, 'cck_schema');
+  return graphviz_filter_render($G, 'cck');
 }
 
 function _cck_schema_nodereference_cardinality($field) {

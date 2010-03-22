@@ -299,7 +299,7 @@ function _graphviz_filter_parse_args($text, &$args) {
 }
 
 function _graphviz_filter_parse_arg($text, $arg) {
-  // FIXME This doesn't handle case /* @arg=value */ i.e. start and close on same line.
+  // TODO This doesn't handle case /* @arg=value */ i.e. start and close on same line.
   if (preg_match("/@$arg\s*?=\s*?(\w[\w\W]*?)[\r\n]/i", $text, $match)) {
     return $match[1];
   }
@@ -353,13 +353,14 @@ function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
 /**
  * API function to render an Image_GraphViz graph.
  */
-function graphviz_filter_render($G, $application = '', $args = array('formats' => 'png', 'imagemap' => TRUE)) {
+function graphviz_filter_render($G, $application = '', $application_args = array(), $graph_args = array('formats' => 'png', 'imagemap' => TRUE)) {
   // Allow other module to alter the graph.
-  drupal_alter('graphviz_render', $args, $G, $application);
+  $graph = array('graph' => &$G, 'arguments' => &$graph_args);
+  drupal_alter('graphviz_render', $graph, array('application' => $application, 'arguments' => $application_args));
 
   // Construct the arguments header.
   $header = "/*\n";
-  foreach ($args as $key => $value) {
+  foreach ($graph_args as $key => $value) {
     $header .= " * @$key = $value\n";
   }
   $header .= " */\n";
