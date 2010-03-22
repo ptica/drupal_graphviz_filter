@@ -351,17 +351,23 @@ function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
 }
 
 /**
- * API function to render an Image_Graphviz graph.
+ * API function to render an Image_GraphViz graph.
  */
-function graphviz_filter_render(&$G) {
-  $dot = <<<EOS
-/*
- * @formats = png
- * @imagemap = TRUE
- */
+function graphviz_filter_render($G, $application = '', $args = array('formats' => 'png', 'imagemap' => TRUE)) {
+  // Allow other module to alter the graph.
+  drupal_alter('graphviz_render', $args, $G, $application);
 
-EOS;
-  $dot .= $G->parse();
-  return graphviz_filter_process($dot);
+  // Construct the arguments header.
+  $header = "/*\n";
+  foreach ($args as $key => $value) {
+    $header .= " * @$key = $value\n";
+  }
+  $header .= " */\n";
+  
+  // Convert the graph object to DOT syntax.
+  $dot = $G->parse();
+
+  // Render the whole thing.
+  return graphviz_filter_process($header . $dot);
 }
 

@@ -1,6 +1,9 @@
 <?php
 // $Id$
 
+/**
+ * Implementation of hook_form_alter().
+ */
 function taxonomy_graph_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'taxonomy_overview_vocabularies') {
     foreach (taxonomy_get_vocabularies() as $vocabulary) {
@@ -43,6 +46,9 @@ function theme_taxonomy_graph_overview_vocabularies($form) {
   return theme('table', $header, $rows, array('id' => 'taxonomy')) . drupal_render($form);
 }
 
+/**
+ * Implementation of hook_theme().
+ */ 
 function taxonomy_graph_theme() {
   return array(
     'taxonomy_graph_overview_vocabularies' => array(
@@ -51,6 +57,9 @@ function taxonomy_graph_theme() {
   );
 }
 
+/**
+ * Implementation of hook_menu().
+ */
 function taxonomy_graph_menu() {
   $items['admin/content/taxonomy/%taxonomy_vocabulary/graph'] = array(
     'title' => 'Graph',
@@ -82,6 +91,6 @@ function taxonomy_graph_page($vocabulary) {
     }
   }
 
-  return graphviz_filter_render($G);
+  return graphviz_filter_render($G, 'taxonomy_graph');
 }
 

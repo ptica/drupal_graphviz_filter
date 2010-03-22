@@ -1,6 +1,9 @@
 <?php
 // $Id$
 
+/**
+ * Implementation of hook_graphviz_formats().
+ */
 function graphviz_formats_graphviz_formats() {
   return array(
     'svg' => array(
@@ -16,6 +19,9 @@ function graphviz_formats_graphviz_formats() {
   );
 }
 
+/**
+ * Implementation of hook_graphviz_render().
+ */
 function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
   $outurl = url($outpath, array('absolute' => TRUE));
   $modurl = url(drupal_get_path('module', 'graphviz_formats'), array('absolute' => TRUE));

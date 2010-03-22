@@ -1,6 +1,9 @@
 <?php
 // $Id$
 
+/**
+ * Implementation of hook_menu().
+ */
 function cck_schema_menu() {
   $items['admin/content/types/schema'] = array(
     'title' => t('Schema'),
@@ -65,7 +68,7 @@ function cck_schema_render() {
 
   _cck_schema_relativity($G);
 
-  return graphviz_filter_render($G);
+  return graphviz_filter_render($G, 'cck_schema');
 }
 
 function _cck_schema_nodereference_cardinality($field) {
