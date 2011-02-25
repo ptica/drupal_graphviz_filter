@@ -1,5 +1,4 @@
 <?php // -*-php-*-
-// $Id$
 /**
  * @file Produces workflow graphs using Graphviz.
  * Uses PEAR::Image_GraphViz (http://pear.php.net/package/Image_GraphViz)

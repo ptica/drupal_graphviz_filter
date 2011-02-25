@@ -1,4 +1,3 @@
-; $Id$
 name = Taxonomy Graph
 description = Produces a taxonomy graph using Graphviz.
 dependencies[] = taxonomy

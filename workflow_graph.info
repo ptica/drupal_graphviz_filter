@@ -1,4 +1,3 @@
-; $Id$
 name = Workflow Graph
 description = Produces workflow graphs using Graphviz.
 package = Workflow
