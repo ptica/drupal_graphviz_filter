@@ -1,5 +1,4 @@
 <?php
-// $Id$
 /**
  * @file Provides new "Graphviz" filter that interprets text as DOT syntax
  * and outputs corresponding PNG image of the graph.

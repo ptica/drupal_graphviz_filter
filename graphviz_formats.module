@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function graphviz_formats_graphviz_formats() {
   return array(

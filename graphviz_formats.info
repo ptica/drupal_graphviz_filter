@@ -1,4 +1,3 @@
-; $Id$
 name = Graphviz Filter formats
 description = "Additional rendering formats for Graphviz Filter."
 dependencies = graphviz_filter
