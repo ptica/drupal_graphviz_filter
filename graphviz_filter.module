@@ -220,7 +220,7 @@ function graphviz_filter_process($text) {
     }
     $outpath = file_create_path($outdir .'/'. md5($text) .'.out.'. $formats[$format]['format']);
     if (file_exists($outpath) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
-      $output .= '<div class="graphviz graphviz-"'. $format .'>';
+      $output .= '<div class="graphviz graphviz-'. $format .'">';
       if ($args['link-output']['value']) {
         $output .= l(t($args['title']['value']), file_create_url($outpath), array('attributes' => array('class' => 'graphviz-link-output')));
       }
