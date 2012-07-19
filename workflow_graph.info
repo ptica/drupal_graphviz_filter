@@ -1,6 +1,8 @@
 name = Workflow Graph
 description = Produces workflow graphs using Graphviz.
 package = Workflow
-dependencies[] = workflow 
+dependencies[] = workflow
 dependencies[] = graphviz_filter
-core = 6.x
+core = 7.x
+files[] = workflow_graph.module
+

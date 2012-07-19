@@ -1,4 +1,6 @@
 name = Graphviz Filter
 description = "Treats input text as DOT syntax and passes it to dot, neato or other, embedding the output into the page."
 package = Filters
-core = 6.x
+core = 7.x
+files[] = graphviz_filter.module
+

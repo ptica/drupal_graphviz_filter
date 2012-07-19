@@ -3,4 +3,6 @@ description = Produces a pseudo-UML class diagram of the content types using Gra
 dependencies[] = content 
 dependencies[] = graphviz_filter
 package = CCK
-core = 6.x
+core = 7.x
+files[] = cck_schema.module
+

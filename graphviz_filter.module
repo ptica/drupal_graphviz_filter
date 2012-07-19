@@ -58,30 +58,30 @@ class Functor {
   var $args;
 };
 
-/**
- * Implementation of hook_filter().
- */
-function graphviz_filter_filter($op, $delta = 0, $format = -1, $text = '') {
-  switch ($op) {
-  case 'list':
-    return array(0 => t('Graphviz (DOT) syntax'));
-  case 'description':
-    return t('Interprets text as DOT syntax and renders the generated graph with the specified format.');
-  case 'process':
-    return preg_replace_callback(GRAPHVIZ_REGEX, Functor::create_functor('_graphviz_filter_process', $format), $text);
-  case 'settings':
-    return _graphviz_filter_settings($format);
-  case 'no cache':
-    return FALSE;
-  default:
-    return $text;
-  }
+function graphviz_filter_filter_info() {
+  $filters['graphviz_filter'] = array(
+    'title' => t('Graphviz (DOT) syntax'),
+    'description' => t('Interprets text as DOT syntax and returns a PNG image of the generated graph.'),
+    'process callback' => '_graphviz_filter_filter_process',
+    'settings callback' => '_graphviz_filter_filter_settings',
+    'default settings' => array(
+      'dot_path' => '',
+      'pear_path' => '',
+      'commands' => GRAPHVIZ_FILTER_SUPPORTED_COMMANDS,
+    ),
+    'tips callback'  => '_graphviz_filter_filter_tips'
+  );
+  return $filters;
+ }
+
+function _graphviz_filter_filter_process($text, $format) {
+  return preg_replace_callback(GRAPHVIZ_REGEX, Functor::create_functor('_graphviz_filter_filterproc', $format), $text);
 }
 
 /**
  * Implementation of hook_filter_tips().
  */
-function graphviz_filter_filter_tips($delta, $format, $long = false) {
+function _graphviz_filter_filter_tips($filter, $format, $long = false) {
   $output = '';
   if ($long) {
     $output .= t('<h4>Using Graphviz filter</h4>');
@@ -110,8 +110,9 @@ function graphviz_filter_filter_tips($delta, $format, $long = false) {
  * Implementation of hook_file_download().
  */
 function graphviz_filter_file_download($file) {
-  $file = file_create_path($file);
-  if (strpos($file, file_directory_path() .'/graphviz') !== FALSE) {
+  //$file = file_create_path($file);
+  $fileuri = file_build_uri($file);
+  if (strpos($fileuri, file_default_scheme() . ':/' .'/graphviz') !== FALSE) {
     return array(
       'Content-Length: '.filesize($file),
     );
@@ -119,49 +120,46 @@ function graphviz_filter_file_download($file) {
 }
 
 /**
- * Implementation of hook_nodeapi().
+ * Implementation of hook_node_delete().
  */
-function graphviz_filter_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
-  if ($op == 'delete') { // delete the Graphviz rendering if any
-    $matches = array();
-    if (preg_match_all(GRAPHVIZ_REGEX, $node->body, $matches)) {
-      $dir = file_directory_path() .'/graphviz';
-      foreach ($matches[1] as $match) {
-        $match = str_replace(array("\r\n", "\r"), "\n", $match); // do like filter.module
-        $basename = md5($match);
-        foreach (file_scan_directory($dir, $basename) as $file) {
-          file_delete($file->filename);
-        }
+function graphviz_filter_node_delete(&$node) {
+  // delete the Graphviz rendering if any
+  $matches = array();
+  if (preg_match_all(GRAPHVIZ_REGEX, $node->body, $matches)) {
+    $dir = file_default_scheme() . ':/' .'/graphviz';
+    foreach ($matches[1] as $match) {
+      $match = str_replace(array("\r\n", "\r"), "\n", $match); // do like filter.module
+      $basename = md5($match);
+      foreach (file_scan_directory($dir, $basename) as $file) {
+        file_delete($file->filename);
       }
     }
   }
 }
 
-function _graphviz_filter_settings($format) {
+function _graphviz_filter_filter_settings($form, &$form_state, $filter, $format, $defaults, $filters) {
+  $filter->settings += $defaults;
+
   $form = array();
-  $form['graphviz_filter'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Graphviz Filter',
-  );
-  $form['graphviz_filter']['graphviz_filter_dot_path'] = array(
+  $form['dot_path'] = array(
     '#type' => 'textfield',
     '#title' => t('Path of Graphviz commands'),
-    '#default_value' => variable_get('graphviz_filter_dot_path', ''),
+    '#default_value' => $filter->settings['dot_path'],
     '#description' => t('Specify the base path of the Graphviz commands (`dot`, `neato`, etc). 
                          Leave blank if these commands are to be found on the system PATH which, on this server, is set to:<br /><pre>@path</pre>',
-                         array('@path' => $_ENV['PATH'])
+                         array('@path' => getenv('PATH'))
                        ),
   );
-  $form['graphviz_filter']['graphviz_filter_commands'] = array(
+  $form['commands'] = array(
     '#type' => 'textfield',
     '#title' => t('Supported Graphviz commands'),
-    '#default_value' => variable_get('graphviz_filter_commands', GRAPHVIZ_FILTER_SUPPORTED_COMMANDS),
+    '#default_value' => $filter->settings['commands'],
     '#description' => t('Specify the Graphviz commands that can be invoked by the filter, separated by commas. This prevents users from inserting malicious commands in the Graphviz script.'),
   );
-  $form['graphviz_filter']['graphviz_filter_pear_path'] = array(
+  $form['pear_path'] = array(
     '#type' => 'textfield',
     '#title' => t('Path of PEAR::Image_GraphViz package'),
-    '#default_value' => variable_get('graphviz_filter_pear_path', ''),
+    '#default_value' => $filter->settings['pear_path'],
     '#description' => t('Specify the base path of the PEAR::Image_GraphViz package. 
                          The specified directory should contain the following subdirectory structure: Image/GraphViz.php. 
                          Leave blank if this package was installed via `pear install` or if it is present in the PHP include_path setting.
@@ -180,11 +178,11 @@ function _graphviz_create_filepath($path, $filename) {
   return $filename;
 }
 
-function _graphviz_filter_process($matches, $format) {
-  return graphviz_filter_process($matches[1]);
+function _graphviz_filter_filterproc($matches, $format) {
+  return graphviz_filter_filterproc($matches[1]);
 }
 
-function graphviz_filter_process($text) {
+function graphviz_filter_filterproc($text) {
   // Parse arguments.
   list($formats, $args) = _graphviz_filter_formats();
   _graphviz_filter_parse_args($text, $args);
@@ -200,10 +198,10 @@ function graphviz_filter_process($text) {
   }
 
   // Create a temporary file with the DOT script.
-  $outdir = file_directory_path().'/graphviz';
-  file_check_directory($outdir, FILE_CREATE_DIRECTORY);
-  $inpath = file_create_path($outdir .'/'. md5($text) .'.dot');
-  if (!file_exists($inpath)) {
+  $outdir = '/graphviz';
+  file_prepare_directory(file_build_uri($outdir), FILE_CREATE_DIRECTORY);
+  $inpath = file_build_uri($outdir .'/'. md5($text) .'.dot');
+  if (!file_exists(drupal_realpath($inpath))) {
     file_put_contents($inpath, $text);
   }
 
@@ -218,8 +216,8 @@ function graphviz_filter_process($text) {
       watchdog('graphviz filter', $msg, $arg, WATCHDOG_ERROR);
       continue;
     }
-    $outpath = file_create_path($outdir .'/'. md5($text) .'.out.'. $formats[$format]['format']);
-    if (file_exists($outpath) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
+    $outpath = file_build_uri($outdir .'/'. md5($text) .'.out.'. $formats[$format]['format']);
+    if (file_exists(drupal_realpath($outpath)) || _graphviz_filter_render($inpath, $outpath, $formats[$format]['format'], $args['command']['value'])) {
       $output .= '<div class="graphviz graphviz-'. $format .'">';
       if ($args['link-output']['value']) {
         $output .= l(t($args['title']['value']), file_create_url($outpath), array('attributes' => array('class' => 'graphviz-link-output')));
@@ -281,8 +279,8 @@ function _graphviz_filter_formats() {
 function _graphviz_filter_render($dotfile, $outputfile, $format, $command) {
   $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), $command);  
   $command .= ' -T'.escapeshellarg($format)
-             .' -o'.escapeshellarg(getcwd() .'/'. $outputfile)
-             .' '.escapeshellarg(getcwd() .'/'. $dotfile)
+             .' -o'.escapeshellarg(drupal_realpath($outputfile))
+             .' '.escapeshellarg(drupal_realpath($dotfile))
              .' 2>&1';
   $output = array();
   $return = 0;
@@ -358,9 +356,9 @@ function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
   }
   else {
     $output = '<img src="'. file_create_url($outpath) .'" title="'. check_plain(t($args['title']['value'])) .'" ';
-    $mappath = file_create_path($outpath .'.map');
-    if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mappath, 'cmapx', $args['command']['value'])) {
-      $map = file_get_contents($mappath);
+    $mapuri = $outpath .'.map';
+    if ($args['imagemap']['value'] && _graphviz_filter_render($inpath, $mapuri, 'cmapx', $args['command']['value'])) {
+      $map = file_get_contents($mapuri);
       $id = 'G';
       $match = array();
       if (preg_match('/<map[^>]*id\s*=\s*"(.*?)"/', $map, $match)) {
@@ -384,7 +382,7 @@ function graphviz_filter_graphviz_render($inpath, $outpath, $format, $args) {
 function graphviz_filter_render($G, $application = '', $application_args = array(), $graph_args = array('formats' => 'png', 'imagemap' => TRUE)) {
   // Allow other module to alter the graph.
   $graph = array('graph' => &$G, 'arguments' => &$graph_args);
-  drupal_alter('graphviz_render', $graph, array('application' => $application, 'arguments' => $application_args));
+  drupal_alter('graphviz_render', $graph, $temp=array('application' => $application, 'arguments' => $application_args));
 
   // Construct the arguments header.
   $header = "/*\n";
@@ -397,6 +395,6 @@ function graphviz_filter_render($G, $application = '', $application_args = array
   $dot = $G->parse();
 
   // Render the whole thing.
-  return graphviz_filter_process($header . $dot);
+  return graphviz_filter_filterproc($header . $dot);
 }
 

@@ -3,5 +3,6 @@ description = Produces a taxonomy graph using Graphviz.
 dependencies[] = taxonomy
 dependencies[] = graphviz_filter
 package = Taxonomy
-core = 6.x
+core = 7.x
+files[] = taxonomy_graph.module
 
