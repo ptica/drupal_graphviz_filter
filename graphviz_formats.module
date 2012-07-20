@@ -22,7 +22,7 @@ function graphviz_formats_graphviz_formats() {
  * Implementation of hook_graphviz_render().
  */
 function graphviz_formats_graphviz_render($inpath, $outpath, $format, $args) {
-  $outurl = url($outpath, array('absolute' => TRUE));
+  $outurl = file_create_url($outpath);
   $modurl = url(drupal_get_path('module', 'graphviz_formats'), array('absolute' => TRUE));
   if ($args['zgrviewer']['value']) {
     return <<<EOS
