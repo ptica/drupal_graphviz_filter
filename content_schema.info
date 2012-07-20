@@ -1,8 +1,7 @@
-name = CCK Schema
+name = Content Schema
 description = Produces a pseudo-UML class diagram of the content types using Graphviz.
-dependencies[] = content 
 dependencies[] = graphviz_filter
-package = CCK
+package = Content
 core = 7.x
-files[] = cck_schema.module
+files[] = content_schema.module
 
