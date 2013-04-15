@@ -18,7 +18,7 @@ function graphviz_filter_requirements($phase) {
     // Check for availability of `dot`.
     $output = array();
     $return = 0;
-    $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), 'dot'); 
+    $command = _graphviz_create_filepath(variable_get('graphviz_filter_dot_path', ''), 'dot');
     exec("$command -V 2>&1", $output, $return);
     $requirements['dot'] = array(
       'title' => $t('Graphviz tools'),
@@ -122,10 +122,11 @@ function graphviz_filter_file_download($file) {
 /**
  * Implementation of hook_node_delete().
  */
-function graphviz_filter_node_delete(&$node) {
+function graphviz_filter_node_delete($node) {
   // delete the Graphviz rendering if any
   $matches = array();
-  if (preg_match_all(GRAPHVIZ_REGEX, $node->body, $matches)) {
+  ($body = @$node->body) || ($body = '');
+  if (preg_match_all(GRAPHVIZ_REGEX, $body, $matches)) {
     $dir = file_default_scheme() . ':/' .'/graphviz';
     foreach ($matches[1] as $match) {
       $match = str_replace(array("\r\n", "\r"), "\n", $match); // do like filter.module
