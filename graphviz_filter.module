@@ -102,7 +102,11 @@ function _graphviz_filter_filter_tips($filter, $format, $long = false) {
   foreach ($formats as $format => $info) {
     $items[] = $format .': '. $info['description'];
   }
-  $output .= theme_item_list($items);
+  // TODO
+  // BEWARE following generates warning:
+  // Undefined index: items in theme_item_list()
+  // etc
+  //$output .= theme_item_list($items);
   return $output;
 }
 
@@ -125,7 +129,8 @@ function graphviz_filter_file_download($file) {
 function graphviz_filter_node_delete($node) {
   // delete the Graphviz rendering if any
   $matches = array();
-  ($body = @$node->body) || ($body = '');
+  $body = !empty($node->body) ? $node->body : '';
+  if (is_array($body) && $body['und'][0]['format'] == 'filtered_html') $body = '';
   if (preg_match_all(GRAPHVIZ_REGEX, $body, $matches)) {
     $dir = file_default_scheme() . ':/' .'/graphviz';
     foreach ($matches[1] as $match) {
