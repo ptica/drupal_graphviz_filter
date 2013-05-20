@@ -130,7 +130,7 @@ function graphviz_filter_node_delete($node) {
   // delete the Graphviz rendering if any
   $matches = array();
   $body = !empty($node->body) ? $node->body : '';
-  if (is_array($body) && $body['und'][0]['format'] == 'filtered_html') $body = '';
+  if (is_array($body)) $body = '';
   if (preg_match_all(GRAPHVIZ_REGEX, $body, $matches)) {
     $dir = file_default_scheme() . ':/' .'/graphviz';
     foreach ($matches[1] as $match) {
